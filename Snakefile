@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+
 #############
 # FUNCTIONS #
 #############
@@ -48,7 +49,7 @@ adaptors = 'data/adaptors.fasta'
 bbduk = 'shub://TomHarrop/seq-utils:bbmap_38.76'
 bioconductor = 'shub://TomHarrop/r-containers:bioconductor_3.10'
 biopython = 'shub://TomHarrop/singularity-containers:biopython_1.73'
-busco = 'docker://ezlabgva/busco:v4.0.4_cv1'
+busco = 'docker://ezlabgva/busco:v4.1.4_cv1'
 pandas_container = 'shub://TomHarrop/py-containers:pandas_0.25.3'
 r = 'shub://TomHarrop/r-containers:r_3.6.2'
 trinity = 'shub://TomHarrop/assemblers:trinity_2.11.0'
@@ -135,7 +136,7 @@ rule bc_target:
                sample=all_samples,
                run=['raw', 'merged']),
         expand(('output/099_busco/{sample}/{run}/{filter}/'
-                'busco/run_hymenoptera_odb10/'
+                'busco/run_metazoa_odb10/'
                 'full_table.tsv'),
                sample=all_samples,
                run=['raw', 'merged'],
@@ -147,7 +148,7 @@ rule busco:
         lineage = 'data/metazoa_odb10'
     output:
         ('output/099_busco/{sample}/{run}/{filter}/'
-         'busco/run_hymenoptera_odb10/'
+         'busco/run_metazoa_odb10/'
          'full_table.tsv'),
     log:
         Path(('output/logs/'
@@ -167,7 +168,7 @@ rule busco:
         '--out {params.name} '
         '--lineage_dataset ' + posix_path('{input.lineage}') + ' '
         '--cpu {threads} '
-        '--augustus_species honeybee1 '
+        # '--augustus_species honeybee1 '
         '--mode transcriptome '
         '&> {log}'
 
