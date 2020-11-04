@@ -16,7 +16,17 @@ def get_bc(wildcards):
     return my_pep['bc']
 
 
-
+def pick_trinity_input(wildcards):
+    if wildcards.run == 'merged':
+        return {
+            'r1': 'output/000_tmp/{sample}.r1_joined_with_merged.fastq',
+            'r2': 'output/020_merged/{sample}_R2.fastq'}
+    elif wildcards.run == 'raw':
+        return {
+            'r1': 'output/010_reads/{sample}_R1.fastq',
+            'r2': 'output/010_reads/{sample}_R2.fastq'}
+    else:
+        raise ValueError(f'wtf run {wildcards.run}')
 
 
 ###########
@@ -36,7 +46,7 @@ biopython = 'shub://TomHarrop/singularity-containers:biopython_1.73'
 busco = 'docker://ezlabgva/busco:v4.0.4_cv1'
 pandas_container = 'shub://TomHarrop/py-containers:pandas_0.25.3'
 r = 'shub://TomHarrop/r-containers:r_3.6.2'
-trinity = 'shub://TomHarrop/assemblers:trinity_2.9.1'
+trinity = 'shub://TomHarrop/assemblers:trinity_2.11.0'
 trinotate = 'shub://TomHarrop/trinotate_pipeline:v0.0.12'
 
 ########
@@ -186,34 +196,41 @@ wildcard_constraints:
 #     script:
 #         'src/transcripts_by.R'
 
+rule bc_target:
+    input:
+        expand('output/070_trinotate/{sample}/{run}/trinotate/Trinotate.sqlite',
+               sample=all_samples,
+               run=['raw', 'merged'])
+
+
 # # annotation
-# rule trinotate:
-#     input:
-#         transcripts = 'output/030_trinity/trinity_{run}/Trinity.fasta',
-#         blast_db = 'data/db/uniprot_sprot.pep',
-#         hmmer_db = 'data/db/Pfam-A.hmm',
-#         sqlite_db = 'data/db/Trinotate.sqlite',
-#     output:
-#         'output/070_trinotate/{run}/trinotate/trinotate_annotation_report.txt',
-#         'output/070_trinotate/{run}/blastx/blastx.outfmt6',
-#         'output/070_trinotate/{run}/trinotate/Trinotate.sqlite'
-#     params:
-#         outdir = 'output/070_trinotate/{run}'
-#     log:
-#         'output/logs/trinotate.{run}.log'
-#     threads:
-#         10
-#     singularity:
-#         trinotate
-#     shell:
-#         'trinotate_pipeline '
-#         '--trinity_fasta {input.transcripts} '
-#         '--blast_db {input.blast_db} '
-#         '--hmmer_db {input.hmmer_db} '
-#         '--sqlite_db {input.sqlite_db} '
-#         '--outdir {params.outdir} '
-#         '--threads {threads} '
-#         '&> {log}'
+rule trinotate:
+    input:
+        transcripts = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta',
+        blast_db = 'data/db/uniprot_sprot.pep',
+        hmmer_db = 'data/db/Pfam-A.hmm',
+        sqlite_db = 'data/db/Trinotate.sqlite',
+    output:
+        'output/070_trinotate/{sample}/{run}/trinotate/trinotate_annotation_report.txt',
+        'output/070_trinotate/{sample}/{run}/blastx/blastx.outfmt6',
+        'output/070_trinotate/{sample}/{run}/trinotate/Trinotate.sqlite'
+    params:
+        outdir = 'output/070_trinotate/{sample}/{run}'
+    log:
+        'output/logs/trinotate.{sample}.{run}.log'
+    threads:
+        10
+    singularity:
+        trinotate
+    shell:
+        'trinotate_pipeline '
+        '--trinity_fasta {input.transcripts} '
+        '--blast_db {input.blast_db} '
+        '--hmmer_db {input.hmmer_db} '
+        '--sqlite_db {input.sqlite_db} '
+        '--outdir {params.outdir} '
+        '--threads {threads} '
+        '&> {log}'
 
 
 # # differential expression
@@ -478,26 +495,6 @@ wildcard_constraints:
 #         pandas_container
 #     script:
 #         'src/generate_samples_text.py'
-
-rule bc_target:
-    input:
-        expand('output/030_trinity/trinity.{sample}.{run}/Trinity.fasta',
-               sample=all_samples,
-               run=['raw', 'merged'])
-
-
-
-def pick_trinity_input(wildcards):
-    if wildcards.run == 'merged':
-        return {
-            'r1': 'output/000_tmp/{sample}.r1_joined_with_merged.fastq',
-            'r2': 'output/020_merged/{sample}_R2.fastq'}
-    elif wildcards.run == 'raw':
-        return {
-            'r1': 'output/010_reads/{sample}_R1.fastq',
-            'r2': 'output/010_reads/{sample}_R2.fastq'}
-    else:
-        raise ValueError(f'wtf run {wildcards.run}')
 
 
 # trinity
