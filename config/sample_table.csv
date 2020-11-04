@@ -1,0 +1,5 @@
+ogbf_lib_id,ogbf_sample_number,sample_name,bc,r1,r2
+5925-01-58-1,93,flatworm,AGGCAGCT+CGGCTAAC,data1,data2
+5925-02-58-1,94,rotifer,ATCGGCGA+TCCAAGAA,data1,data2
+5925-03-58-1,95,nematode,CCGTGACC+CCGAACGT,data1,data2
+5925-04-58-1,96,tardigrade,ATACTTGT+TAACCGCC,data1,data2

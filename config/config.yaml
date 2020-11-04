@@ -1,0 +1,10 @@
+pep_version: 2.0.0
+sample_table: "sample_table.csv"
+sample_modifiers:
+  derive:
+    attributes: [r1, r2]
+    sources:
+      data1: >-
+        data/reads/CEBVTANXX-{ogbf_lib_id}_S{ogbf_sample_number}_L007_R1_001.fastq.gz
+      data2: >-
+        data/reads/CEBVTANXX-{ogbf_lib_id}_S{ogbf_sample_number}_L007_R2_001.fastq.gz
