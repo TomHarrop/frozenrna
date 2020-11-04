@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from pathlib import Path
 
 #############
 # FUNCTIONS #
@@ -27,6 +28,10 @@ def pick_trinity_input(wildcards):
             'r2': 'output/010_reads/{sample}_R2.fastq'}
     else:
         raise ValueError(f'wtf run {wildcards.run}')
+
+
+def posix_path(x):
+    return(Path(x).resolve().as_posix())
 
 
 ###########
@@ -124,83 +129,85 @@ wildcard_constraints:
 #     script:
 #         'src/fix_busco_table.R'
 
-# rule busco:
-#     input:
-#         fasta = 'output/050_transcripts-by/{run}/{filter}.fasta',
-#         lineage = 'data/hymenoptera_odb10'
-#     output:
-#         ('output/099_busco/{run}.{filter}/'
-#          'busco/run_hymenoptera_odb10/'
-#          'full_table.tsv'),
-#     log:
-#         Path(('output/logs/'
-#               'busco.{run}.{filter}.log')).resolve()
-#     params:
-#         wd = 'output/099_busco/{run}.{filter}',
-#         name = 'busco',
-#         fasta = lambda wildcards, input: Path(input.fasta).resolve(),
-#         lineage = lambda wildcards, input:
-#             Path(input.lineage).resolve()
-#     threads:
-#         multiprocessing.cpu_count()
-#     singularity:
-#         busco
-#     shell:
-#         'cd {params.wd} || exit 1 ; '
-#         'busco '
-#         '--force '
-#         '--in {params.fasta} '
-#         '--out {params.name} '
-#         '--lineage_dataset {params.lineage} '
-#         '--cpu {threads} '
-#         '--augustus_species honeybee1 '
-#         '--mode transcriptome '
-#         '&> {log}'
-
-
-# # filter transcripts
-# rule filter_isoforms:
-#     input:
-#         transcripts = 'output/030_trinity/trinity_{run}/Trinity.fasta',
-#         names = 'output/050_transcripts-by/{run}/transcripts_by_{filter}.txt'
-#     output:
-#         'output/050_transcripts-by/{run}/{filter}.fasta'
-#     log:
-#         'output/logs/filter_isoforms.{run}.{filter}.log'
-#     singularity:
-#         bbduk
-#     shell:
-#         'filterbyname.sh '
-#         'in={input.transcripts} '
-#         'include=t '
-#         'names={input.names} '
-#         'out={output} '
-#         '2> {log}'
-
-# rule transcripts_by:
-#     input:
-#         qf = expand('output/040_trinity-abundance/{{run}}/{indiv}/quant.sf',
-#                     indiv=ordered_indivs),
-#         expr = ('output/040_trinity-abundance/{run}/'
-#                 'salmon.isoform.TMM.EXPR.matrix'),
-#         gtm = 'output/030_trinity/trinity_{run}/Trinity.fasta.gene_trans_map'
-#     output:
-#         ln = ('output/050_transcripts-by/{run}/'
-#               'transcripts_by_length.txt'),
-#         expr = ('output/050_transcripts-by/{run}/'
-#                 'transcripts_by_expr.txt')
-#     log:
-#         'output/logs/transcripts_by.{run}.log'
-#     singularity:
-#         r
-#     script:
-#         'src/transcripts_by.R'
-
 rule bc_target:
     input:
         expand('output/070_trinotate/{sample}/{run}/trinotate/Trinotate.sqlite',
                sample=all_samples,
-               run=['raw', 'merged'])
+               run=['raw', 'merged']),
+        expand(('output/099_busco/{sample}/{run}/{filter}/'
+                'busco/run_hymenoptera_odb10/'
+                'full_table.tsv'),
+               sample=all_samples,
+               run=['raw', 'merged'],
+               filter=['length', 'expr'])
+
+rule busco:
+    input:
+        fasta = 'output/050_transcripts-by/{sample}/{run}/{filter}.fasta',
+        lineage = 'data/metazoa_odb10'
+    output:
+        ('output/099_busco/{sample}/{run}/{filter}/'
+         'busco/run_hymenoptera_odb10/'
+         'full_table.tsv'),
+    log:
+        Path(('output/logs/'
+              'busco.{sample}.{run}.{filter}.log')).resolve()
+    params:
+        wd = 'output/099_busco/{sample}/{run}/{filter}',
+        name = 'busco',
+    threads:
+        workflow.cores
+    singularity:
+        busco
+    shell:
+        'cd {params.wd} || exit 1 ; '
+        'busco '
+        '--force '
+        '--in ' + posix_path('{input.fasta}') + ' '
+        '--out {params.name} '
+        '--lineage_dataset ' + posix_path('{input.lineage}') + ' '
+        '--cpu {threads} '
+        '--augustus_species honeybee1 '
+        '--mode transcriptome '
+        '&> {log}'
+
+
+# filter transcripts
+rule filter_isoforms:
+    input:
+        transcripts = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta',
+        names = 'output/050_transcripts-by/{sample}/{run}/transcripts_by_{filter}.txt'
+    output:
+        'output/050_transcripts-by/{sample}/{run}/{filter}.fasta'
+    log:
+        'output/logs/filter_isoforms.{sample}.{run}.{filter}.log'
+    singularity:
+        bbduk
+    shell:
+        'filterbyname.sh '
+        'in={input.transcripts} '
+        'include=t '
+        'names={input.names} '
+        'out={output} '
+        '2> {log}'
+
+rule transcripts_by:
+    input:
+        qf = 'output/040_trinity-abundance/{sample}/{run}/quant.sf',
+        expr = ('output/040_trinity-abundance/{sample}/{run}/'
+                'salmon.isoform.TMM.EXPR.matrix'),
+        gtm = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta.gene_trans_map'
+    output:
+        ln = ('output/050_transcripts-by/{sample}/{run}/'
+              'transcripts_by_length.txt'),
+        expr = ('output/050_transcripts-by/{sample}/{run}/'
+                'transcripts_by_expr.txt')
+    log:
+        'output/logs/transcripts_by.{sample}.{run}.log'
+    singularity:
+        r
+    script:
+        'src/transcripts_by.R'
 
 
 # # annotation
@@ -405,97 +412,77 @@ rule trinotate:
 #         '2> {log}'
 
 
-# rule abundance_to_matrix:
-#     input:
-#         qf = expand('output/040_trinity-abundance/{{run}}/{indiv}/quant.sf',
-#                     indiv=ordered_indivs),
-#         gtm = 'output/030_trinity/trinity_{run}/Trinity.fasta.gene_trans_map'
-#     output:
-#         'output/040_trinity-abundance/{run}/salmon.isoform.counts.matrix',
-#         'output/040_trinity-abundance/{run}/salmon.isoform.TMM.EXPR.matrix'
-#     params:
-#         outdir = 'output/040_trinity-abundance/{run}',
-#         qf = lambda wildcards, input:
-#             sorted(set(Path(x).resolve() for x in input.qf)),
-#         gtm = lambda wildcards, input:
-#             Path(input.gtm).resolve()
-#     log:
-#         Path('output/logs/abundance_to_matrix.{run}.log').resolve()
-#     singularity:
-#         trinity
-#     shell:
-#         'cd {params.outdir} || exit 1 ; '
-#         'abundance_estimates_to_matrix.pl '
-#         '--est_method salmon '
-#         '--gene_trans_map {params.gtm} '
-#         '--name_sample_by_basedir '
-#         '{params.qf} '
-#         '&> {log}'
-
-# rule trinity_abundance:
-#     input:
-#         'output/030_trinity/trinity_{run}/Trinity.fasta.salmon.idx',
-#         transcripts = 'output/030_trinity/trinity_{run}/Trinity.fasta',
-#         r1 = expand('output/010_reads/{indiv}_R1.fastq.gz',
-#                     indiv=ordered_indivs),
-#         r2 = expand('output/010_reads/{indiv}_R2.fastq.gz',
-#                     indiv=indiv_with_r2),
-#         samples_txt = 'output/030_trinity/samples.txt'
-#     output:
-#         expand('output/040_trinity-abundance/{{run}}/{indiv}/quant.sf',
-#                indiv=ordered_indivs)
-#     params:
-#         outdir = 'output/040_trinity-abundance/{run}',
-#         transcripts = lambda wildcards, input:
-#             Path(input.transcripts).resolve(),
-#         samples_txt = lambda wildcards, input:
-#             Path(input.samples_txt).resolve()
-#     log:
-#         Path('output/logs/trinity_abundance.{run}.log').resolve()
-#     threads:
-#         multiprocessing.cpu_count()
-#     singularity:
-#         trinity
-#     shell:
-#         'cd {params.outdir} || exit 1 ; '
-#         'align_and_estimate_abundance.pl '
-#         '--transcripts {params.transcripts} '
-#         '--seqType fq '
-#         '--samples_file {params.samples_txt} '
-#         '--est_method salmon '
-#         '--SS_lib_type RF '
-#         '--thread_count {threads} '
-#         '--trinity_mode '
-#         '&> {log}'
 
 
-# rule trinity_abundance_prep:
-#     input:
-#         transcripts = 'output/030_trinity/trinity_{run}/Trinity.fasta'
-#     output:
-#         directory('output/030_trinity/trinity_{run}/Trinity.fasta.salmon.idx')
-#     log:
-#         'output/logs/trinity_abundance_prep.{run}.log'
-#     singularity:
-#         trinity
-#     shell:
-#         'align_and_estimate_abundance.pl '
-#         '--transcripts {input.transcripts} '
-#         '--est_method salmon '
-#         '--trinity_mode '
-#         '--prep_reference '
-#         '&> {log}'
+rule abundance_to_matrix:
+    input:
+        qf = 'output/040_trinity-abundance/{sample}/{run}/quant.sf',
+        gtm = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta.gene_trans_map'
+    output:
+        'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.counts.matrix',
+        'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.TMM.EXPR.matrix'
+    params:
+        outdir = 'output/040_trinity-abundance/{sample}/{run}'
+    log:
+        Path('output/logs/abundance_to_matrix.{sample}.{run}.log').resolve()
+    singularity:
+        trinity
+    shell:
+        'cd {params.outdir} || exit 1 ; '
+        'abundance_estimates_to_matrix.pl '
+        '--est_method salmon '
+        '--gene_trans_map ' + posix_path('{input.gtm}') + ' '
+        '--name_sample_by_basedir '
+        + posix_path('{input.qf}') + ' '
+        '&> {log}'
 
-# rule generate_samples_text:
-#     input:
-#         raw_read_csv = raw_read_csv
-#     output:
-#         samples_txt = 'output/030_trinity/samples.txt'
-#     singularity:
-#         pandas_container
-#     script:
-#         'src/generate_samples_text.py'
 
+rule trinity_abundance:
+    input:
+        'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta.salmon.idx',
+        transcripts = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta',
+        r1 = 'output/010_reads/{sample}_R1.fastq',
+        r2 = 'output/010_reads/{sample}_R2.fastq'
+    output:
+        'output/040_trinity-abundance/{sample}/{run}/quant.sf'
+    params:
+        outdir = 'output/040_trinity-abundance/{sample}/{run}',
+    log:
+        Path('output/logs/trinity_abundance.{sample}.{run}.log').resolve()
+    threads:
+        workflow.cores
+    singularity:
+        trinity
+    shell:
+        'cd {params.outdir} || exit 1 ; '
+        'align_and_estimate_abundance.pl '
+        '--transcripts ' + posix_path('{input.transcripts}') + ' '
+        '--seqType fq '
+        '--left  ' + posix_path('{input.r1}') + ' '
+        '--right ' + posix_path('{input.r2}') + ' '
+        '--est_method salmon '
+        '--SS_lib_type RF '
+        '--thread_count {threads} '
+        '--trinity_mode '
+        '&> {log}'
+
+rule trinity_abundance_prep:
+    input:
+        transcripts = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta'
+    output:
+        directory(('output/030_trinity/trinity.{sample}.{run}/'
+                   'Trinity.fasta.salmon.idx'))
+    log:
+        'output/logs/trinity_abundance_prep.{sample}.{run}.log'
+    singularity:
+        trinity
+    shell:
+        'align_and_estimate_abundance.pl '
+        '--transcripts {input.transcripts} '
+        '--est_method salmon '
+        '--trinity_mode '
+        '--prep_reference '
+        '&> {log}'
 
 # trinity
 rule trinity:
