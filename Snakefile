@@ -130,17 +130,6 @@ wildcard_constraints:
 #     script:
 #         'src/fix_busco_table.R'
 
-rule bc_target:
-    input:
-        expand('output/070_trinotate/{sample}/{run}/trinotate/Trinotate.sqlite',
-               sample=all_samples,
-               run=['raw', 'merged']),
-        expand(('output/099_busco/{sample}/{run}/{filter}/'
-                'busco/run_metazoa_odb10/'
-                'full_table.tsv'),
-               sample=all_samples,
-               run=['raw', 'merged'],
-               filter=['length', 'expr'])
 
 rule busco:
     input:
@@ -304,73 +293,84 @@ rule trinotate:
 #     script:
 #         'src/generate_deseq_object.R'
 
-# # analyse Trinity output
-# rule group_blast_hits:
-#     input:
-#         blastx = 'output/070_trinotate/{run}/blastx/blastx.outfmt6',
-#         db = 'data/db/uniprot_sprot.pep',
-#         transcripts = 'output/030_trinity/trinity_{run}/Trinity.fasta'
-#     output:
-#         'output/045_transcript-length/{run}/blastx.outfmt6.grouped',
-#         ('output/045_transcript-length/{run}/'
-#          'blastx.outfmt6.grouped.w_pct_hit_length.txt')
-#     params:
-#         wd = 'output/045_transcript-length/{run}',
-#         transcripts = lambda wildcards, input:
-#             Path(input.transcripts).resolve(),
-#         blastx = lambda wildcards, input:
-#             Path(input.blastx).resolve(),
-#         db = lambda wildcards, input:
-#             Path(input.db).resolve()
-#     log:
-#         Path('output/logs/group_blast_hits.{run}.log').resolve()
-#     singularity:
-#         trinity
-#     shell:
-#         'cd {params.wd} || exit 1 ; '
-#         'ln -s {params.blastx} blastx-group.outfmt6 ; '
-#         'blast_outfmt6_group_segments.pl '
-#         'blastx-group.outfmt6 '
-#         '{params.transcripts} '
-#         '{params.db} '
-#         '> blastx.outfmt6.grouped '
-#         '2> {log} ;'
-#         'blast_outfmt6_group_segments.tophit_coverage.pl '
-#         'blastx.outfmt6.grouped '
-#         '> blastx.outfmt6.grouped.w_pct_hit_length.txt '
-#         '2>> {log}'
 
-# rule add_blast_coverage:
-#     input:
-#         blastx = 'output/070_trinotate/{run}/blastx/blastx.outfmt6',
-#         db = 'data/db/uniprot_sprot.pep',
-#         transcripts = 'output/030_trinity/trinity_{run}/Trinity.fasta'
-#     output:
-#         ('output/045_transcript-length/{run}/'
-#          'blastx.outfmt6.w_pct_hit_length.txt'),
-#         ('output/045_transcript-length/{run}/'
-#          'blastx-coverage.outfmt6.w_pct_hit_length')
-#     params:
-#         wd = 'output/045_transcript-length/{run}',
-#         transcripts = lambda wildcards, input:
-#             Path(input.transcripts).resolve(),
-#         blastx = lambda wildcards, input:
-#             Path(input.blastx).resolve(),
-#         db = lambda wildcards, input:
-#             Path(input.db).resolve()
-#     log:
-#         Path('output/logs/add_blast_coverage.{run}.log').resolve()
-#     singularity:
-#         trinity
-#     shell:
-#         'cd {params.wd} || exit 1 ; '
-#         'ln -s {params.blastx} blastx-coverage.outfmt6 ; '
-#         'analyze_blastPlus_topHit_coverage.pl '
-#         'blastx-coverage.outfmt6 '
-#         '{params.transcripts} '
-#         '{params.db} '
-#         '> blastx.outfmt6.w_pct_hit_length.txt '
-#         '2> {log}'
+rule bc_target:
+    input:
+        expand('output/070_trinotate/{sample}/{run}/trinotate/Trinotate.sqlite',
+               sample=all_samples,
+               run=['raw', 'merged']),
+        expand(('output/099_busco/{sample}/{run}/{filter}/'
+                'busco/run_metazoa_odb10/'
+                'full_table.tsv'),
+               sample=all_samples,
+               run=['raw', 'merged'],
+               filter=['length', 'expr']),
+        expand(('output/045_transcript-length/{sample}/{run}/'
+                '{result}'),
+               sample=all_samples,
+               run=['raw', 'merged'],
+               result=['blastx.outfmt6.grouped.w_pct_hit_length.txt',
+                       'blastx.outfmt6.w_pct_hit_length.txt'])
+
+# analyse Trinity output
+rule group_blast_hits:
+    input:
+        blastx = 'output/070_trinotate/{sample}/{run}/blastx/blastx.outfmt6',
+        db = 'data/db/uniprot_sprot.pep',
+        transcripts = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta'
+    output:
+        'output/045_transcript-length/{sample}/{run}/blastx.outfmt6.grouped',
+        ('output/045_transcript-length/{sample}/{run}/'
+         'blastx.outfmt6.grouped.w_pct_hit_length.txt')
+    params:
+        wd = 'output/045_transcript-length/{sample}/{run}'
+    log:
+        Path('output/logs/group_blast_hits.{sample}.{run}.log').resolve()
+    singularity:
+        trinity
+    shell:
+        'cd {params.wd} || exit 1 ; '
+        'ln -s '
+        + posix_path('{input.blastx}') + ' '
+        'blastx-group.outfmt6 ; '
+        'blast_outfmt6_group_segments.pl '
+        'blastx-group.outfmt6 '
+        + posix_path('{input.transcripts}') + ' '
+        + posix_path('{input.db}') + ' '
+        '> blastx.outfmt6.grouped '
+        '2> {log} ;'
+        'blast_outfmt6_group_segments.tophit_coverage.pl '
+        'blastx.outfmt6.grouped '
+        '> blastx.outfmt6.grouped.w_pct_hit_length.txt '
+        '2>> {log}'
+
+rule add_blast_coverage:
+    input:
+        blastx = 'output/070_trinotate/{sample}/{run}/blastx/blastx.outfmt6',
+        db = 'data/db/uniprot_sprot.pep',
+        transcripts = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta'
+    output:
+        ('output/045_transcript-length/{sample}/{run}/'
+         'blastx.outfmt6.w_pct_hit_length.txt'),
+        ('output/045_transcript-length/{sample}/{run}/'
+         'blastx-coverage.outfmt6.w_pct_hit_length')
+    params:
+        wd = 'output/045_transcript-length/{sample}/{run}',
+    log:
+        Path('output/logs/add_blast_coverage.{sample}.{run}.log').resolve()
+    singularity:
+        trinity
+    shell:
+        'cd {params.wd} || exit 1 ; '
+        'ln -s '
+        + posix_path('{input.blastx}') + ' '
+        'blastx-coverage.outfmt6 ; '
+        'analyze_blastPlus_topHit_coverage.pl '
+        'blastx-coverage.outfmt6 '
+        + posix_path('{input.transcripts}') + ' '
+        + posix_path('{input.db}') + ' '
+        '> blastx.outfmt6.w_pct_hit_length.txt '
+        '2> {log}'
 
 # rule plot_exn50:
 #     input:
