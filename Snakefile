@@ -80,6 +80,27 @@ trinotate = 'shub://TomHarrop/trinotate_pipeline:v0.0.12'
 wildcard_constraints:
     sample = '|'.join(all_samples),
 
+rule target:
+    input:
+        expand('output/070_trinotate/{sample}/{run}/trinotate/Trinotate.sqlite',
+               sample=all_samples,
+               run=['raw', 'merged']),
+        expand(('output/099_busco/{sample}/{run}/{filter}/'
+                'busco/run_metazoa_odb10/'
+                'full_table.tsv'),
+               sample=all_samples,
+               run=['raw', 'merged'],
+               filter=['length', 'expr']),
+        expand(('output/045_transcript-length/{sample}/{run}/'
+                '{result}'),
+               sample=all_samples,
+               run=['raw', 'merged'],
+               result=['blastx.outfmt6.grouped.w_pct_hit_length.txt',
+                       'blastx.outfmt6.w_pct_hit_length.txt']),
+        expand('output/040_trinity-abundance/{sample}/{run}/ExN50.pdf',
+               sample=all_samples,
+               run=['raw', 'merged'])
+
 
 # rule target:
 #     input:
@@ -294,24 +315,6 @@ rule trinotate:
 #         'src/generate_deseq_object.R'
 
 
-rule bc_target:
-    input:
-        expand('output/070_trinotate/{sample}/{run}/trinotate/Trinotate.sqlite',
-               sample=all_samples,
-               run=['raw', 'merged']),
-        expand(('output/099_busco/{sample}/{run}/{filter}/'
-                'busco/run_metazoa_odb10/'
-                'full_table.tsv'),
-               sample=all_samples,
-               run=['raw', 'merged'],
-               filter=['length', 'expr']),
-        expand(('output/045_transcript-length/{sample}/{run}/'
-                '{result}'),
-               sample=all_samples,
-               run=['raw', 'merged'],
-               result=['blastx.outfmt6.grouped.w_pct_hit_length.txt',
-                       'blastx.outfmt6.w_pct_hit_length.txt'])
-
 # analyse Trinity output
 rule group_blast_hits:
     input:
@@ -372,48 +375,42 @@ rule add_blast_coverage:
         '> blastx.outfmt6.w_pct_hit_length.txt '
         '2> {log}'
 
-# rule plot_exn50:
-#     input:
-#         exn50 = 'output/040_trinity-abundance/{run}/ExN50.stats'
-#     output:
-#         plot = 'output/040_trinity-abundance/{run}/ExN50.pdf'
-#     log:
-#         'output/logs/plot_exn50.{run}.log'
-#     singularity:
-#         r
-#     script:
-#         'src/plot_exn50.R'
-
-# rule contig_exn50:
-#     input:
-#         transcripts = 'output/030_trinity/trinity_{run}/Trinity.fasta',
-#         expr = ('output/040_trinity-abundance/{run}/'
-#                 'salmon.isoform.TMM.EXPR.matrix')
-#     output:
-#         inputs = ('output/040_trinity-abundance/{run}/'
-#                   'salmon.isoform.TMM.EXPR.matrix.E-inputs'),
-#         stats = ('output/040_trinity-abundance/{run}/'
-#                  'ExN50.stats')
-#     params:
-#         outdir = 'output/040_trinity-abundance/{run}',
-#         transcripts = lambda wildcards, input:
-#             Path(input.transcripts).resolve(),
-#         expr = lambda wildcards, input:
-#             Path(input.expr).resolve()
-#     log:
-#         Path('output/logs/abundance_to_matrix.{run}.log').resolve()
-#     singularity:
-#         trinity
-#     shell:
-#         'cd {params.outdir} || exit 1 ; '
-#         'contig_ExN50_statistic.pl '
-#         '{params.expr} '
-#         '{params.transcripts} '
-#         '> ExN50.stats '
-#         '2> {log}'
+rule plot_exn50:
+    input:
+        exn50 = ('output/040_trinity-abundance/{sample}/{run}/'
+                 'ExN50.stats')
+    output:
+        plot = 'output/040_trinity-abundance/{sample}/{run}/ExN50.pdf'
+    log:
+        'output/logs/plot_exn50.{sample}.{run}.log'
+    singularity:
+        r
+    script:
+        'src/plot_exn50.R'
 
 
-
+rule contig_exn50:
+    input:
+        transcripts = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta',
+        expr = 'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.TMM.EXPR.matrix'
+    output:
+        inputs = ('output/040_trinity-abundance/{sample}/{run}/'
+                  'salmon.isoform.TMM.EXPR.matrix.E-inputs'),
+        stats = ('output/040_trinity-abundance/{sample}/{run}/'
+                 'ExN50.stats')
+    params:
+        outdir = 'output/040_trinity-abundance/{sample}/{run}',
+    log:
+        Path('output/logs/abundance_to_matrix.{sample}.{run}.log').resolve()
+    singularity:
+        trinity
+    shell:
+        'cd {params.outdir} || exit 1 ; '
+        'contig_ExN50_statistic.pl '
+        + posix_path('{input.expr}') + ' '
+        + posix_path('{input.transcripts}') + ' '
+        '> ExN50.stats '
+        '2> {log}'
 
 rule abundance_to_matrix:
     input:
