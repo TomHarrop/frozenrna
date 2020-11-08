@@ -49,7 +49,9 @@ adaptors = 'data/adaptors.fasta'
 bbduk = 'shub://TomHarrop/seq-utils:bbmap_38.76'
 bioconductor = 'shub://TomHarrop/r-containers:bioconductor_3.10'
 biopython = 'shub://TomHarrop/singularity-containers:biopython_1.73'
-busco = 'docker://ezlabgva/busco:v4.1.4_cv1'
+# suprise, the latest busco is broken. roll back to 4.0.4
+# busco = 'docker://ezlabgva/busco:v4.1.4_cv1'
+busco = 'docker://ezlabgva/busco:v4.0.4_cv1'
 pandas_container = 'shub://TomHarrop/py-containers:pandas_0.25.3'
 r = 'shub://TomHarrop/r-containers:r_3.6.2'
 trinity = 'shub://TomHarrop/assemblers:trinity_2.11.0'
@@ -501,7 +503,7 @@ rule trinity_cleanup:
         'tar -cvf '
         '{output} '
         '{input} '
-        '2> {log}'
+        '&> {log}'
 
 rule trinity:
     input:
