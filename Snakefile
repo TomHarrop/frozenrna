@@ -83,6 +83,10 @@ wildcard_constraints:
 
 rule target:
     input:
+        # this rule is to trigger the trinity cleanup
+        expand('output/030_trinity/trinity.{sample}.{run}/read_partitions.tar',
+               sample=all_samples,
+               run=['raw', 'merged']),
         expand('output/070_trinotate/{sample}/{run}/trinotate/Trinotate.sqlite',
                sample=all_samples,
                run=['raw', 'merged']),
@@ -486,12 +490,27 @@ rule trinity_abundance_prep:
         '&> {log}'
 
 # trinity
+rule trinity_cleanup:
+    input:
+        'output/030_trinity/trinity.{sample}.{run}/read_partitions'
+    output:
+        'output/030_trinity/trinity.{sample}.{run}/read_partitions.tar'
+    log:
+        'output/logs/trinity_cleanup.{sample}.{run}.log'
+    shell:
+        'tar -cvf '
+        '{output} '
+        '{input} '
+        '2> {log}'
+
 rule trinity:
     input:
         unpack(pick_trinity_input)
     output:
         'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta',
-        'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta.gene_trans_map'
+        'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta.gene_trans_map',
+        temp(directory(
+            'output/030_trinity/trinity.{sample}.{run}/read_partitions'))
     params:
         outdir = 'output/030_trinity/trinity.{sample}.{run}'
     log:

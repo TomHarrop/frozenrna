@@ -10,6 +10,9 @@ library(ggplot2)
 exn50_file <- snakemake@input[["exn50"]]
 plot_file <- snakemake@output[["plot"]]
 
+# dev
+# exn50_file <- 'output/040_trinity-abundance/tardigrade/raw/ExN50.stats'
+
 exn50 <- fread(exn50_file)
 
 gt <- parse(text = paste0(
@@ -17,8 +20,8 @@ gt <- parse(text = paste0(
   exn50[Ex == 90, ExN50]))
 st <- parse(text = paste0(
   'italic(N)[50] ~ "of the" ~ ',
-  exn50[Ex == 90, num_transcripts],
-  ' ~ "most abundant transcripts that account for 90% of total reads"'
+  exn50[Ex == 90, num_genes],
+  ' ~ "most abundant genes that account for 90% of total reads"'
 ))
 
 vd <- viridisLite::viridis(3)
