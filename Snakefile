@@ -18,6 +18,13 @@ def get_bc(wildcards):
     return my_pep['bc']
 
 
+def pick_fastqc_input(wildcards):
+    if wildcards.reads == 'raw':
+        return('output/000_tmp/{sample}.r{r}.fastq')
+    elif wildcards.reads == 'processed':
+        return('output/010_reads/{sample}_R{r}.fastq')
+
+
 def pick_trinity_input(wildcards):
     if wildcards.run == 'merged':
         return {
@@ -57,6 +64,7 @@ r = 'shub://TomHarrop/r-containers:r_3.6.2'
 trinity = 'shub://TomHarrop/assemblers:trinity_2.11.0'
 trinotate = 'shub://TomHarrop/trinotate_pipeline:v0.0.12'
 fastqc = 'docker://biocontainers/fastqc:v0.11.9_cv7'
+multiqc = 'docker://ewels/multiqc:1.9'
 
 ########
 # MAIN #
@@ -714,25 +722,52 @@ rule check_barcodes:
 
 # qc rules
 # https://github.com/s-andrews/FastQC/issues/14#issuecomment-486726932
+rule multiqc:
+    input:
+        expand('output/005_fastqc/{sample}/{sample}.{reads}.r{r}.fastqc',
+               sample=all_samples,
+               reads=['raw', 'processed'],
+               r=[1, 2]),
+        expand(('output/099_busco/{sample}/{run}/{filter}/'
+                'busco/run_metazoa_odb10/'
+                'full_table.tsv'),
+               sample=all_samples,
+               run=['raw', 'merged'],
+               filter=['length', 'expr']),
+
+    output:
+        'output/007_multiqc/multiqc_report.html'
+    params:
+        outdir = 'output/007_multiqc'
+    log:
+        'output/logs/multiqc.log'
+    container:
+        multiqc
+    shell:
+        'multiqc '
+        '-o {params.outdir} '
+        'output '
+        '2> {log}'
+
 rule fastqc:
     input:
-        r1 = 'output/000_tmp/{sample}.r1.fastq',
-        r2 = 'output/000_tmp/{sample}.r2.fastq'
+        # 'output/000_tmp/{sample}.r{r}.fastq',
+        pick_fastqc_input
     output:
-        'output/005_fastqc/{sample}/{sample}.fastqc'
+        'output/005_fastqc/{sample}/{sample}.{reads}.r{r}.fastqc'
     params:
-        outdir = 'output/005_fastqc/{sample}'
+        outdir = 'output/005_fastqc/{sample}',
+        filename = lambda wildcards:
+            f'{wildcards.sample}.{wildcards.reads}.r{wildcards.r}'
     log:
-        'output/logs/fastqc.{sample}.log'
-    threads:
-        2
+        'output/logs/fastqc.{sample}.{reads}.r{r}.log'
     container:
         fastqc
     shell:
         'fastqc '
-        '--threads {threads} '
         '-o {params.outdir} '
-        '{input.r1} {input.r2} '
+        'stdin:{params.filename} '
+        '< {input} '
         '&> {log} '
         '; touch {output}'
 
