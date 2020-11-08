@@ -396,7 +396,7 @@ rule contig_exn50:
         expr = 'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.TPM.not_cross_norm'
     output:
         inputs = ('output/040_trinity-abundance/{sample}/{run}/'
-                  'salmon.isoform.TMM.EXPR.matrix.E-inputs'),
+                  'salmon.isoform.TPM.not_cross_norm.E-inputs'),
         stats = ('output/040_trinity-abundance/{sample}/{run}/'
                  'ExN50.stats')
     params:
