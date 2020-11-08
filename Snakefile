@@ -207,7 +207,7 @@ rule transcripts_by:
     input:
         qf = 'output/040_trinity-abundance/{sample}/{run}/quant.sf',
         expr = ('output/040_trinity-abundance/{sample}/{run}/'
-                'salmon.isoform.TMM.EXPR.matrix'),
+                'salmon.isoform.TPM.not_cross_norm'),
         gtm = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta.gene_trans_map'
     output:
         ln = ('output/050_transcripts-by/{sample}/{run}/'
