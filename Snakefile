@@ -54,6 +54,7 @@ pandas_container = 'shub://TomHarrop/py-containers:pandas_0.25.3'
 r = 'shub://TomHarrop/r-containers:r_3.6.2'
 trinity = 'shub://TomHarrop/assemblers:trinity_2.11.0'
 trinotate = 'shub://TomHarrop/trinotate_pipeline:v0.0.12'
+fastqc = 'docker://biocontainers/fastqc:v0.11.9_cv7'
 
 ########
 # MAIN #
@@ -686,3 +687,41 @@ rule check_barcodes:
         'barcodes={params.bc} '
         '>> {output} '
         '2> {log}'
+
+
+# qc rules
+# https://github.com/s-andrews/FastQC/issues/14#issuecomment-486726932
+rule fastqc:
+    input:
+        r1 = 'output/000_tmp/{sample}.r1.fastq',
+        r2 = 'output/000_tmp/{sample}.r2.fastq'
+    output:
+        'output/005_fastqc/{sample}/{sample}.fastqc'
+    params:
+        outdir = 'output/005_fastqc/{sample}'
+    log:
+        'output/logs/fastqc.{sample}.log'
+    threads:
+        2
+    container:
+        fastqc
+    shell:
+        'fastqc '
+        '--threads {threads} '
+        '-o {params.outdir} '
+        '{input.r1} {input.r2} '
+        '&> {log} '
+        '; touch {output}'
+
+rule fastqc_pipe:
+    input:
+        unpack(get_reads)
+    output:
+        r1 = pipe('output/000_tmp/{sample}.r1.fastq'),
+        r2 = pipe('output/000_tmp/{sample}.r2.fastq')
+    shell:
+        'zcat {input.r1} >> {output.r1} & '
+        'zcat {input.r2} >> {output.r2} & '
+        'wait'
+
+
