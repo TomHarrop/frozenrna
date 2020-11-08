@@ -418,7 +418,7 @@ rule abundance_to_matrix:
         qf = 'output/040_trinity-abundance/{sample}/{run}/quant.sf',
         gtm = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta.gene_trans_map'
     output:
-        'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.counts.matrix',
+        # 'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.counts.matrix',
         'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.TMM.EXPR.matrix'
     params:
         outdir = 'output/040_trinity-abundance/{sample}/{run}'
@@ -432,6 +432,7 @@ rule abundance_to_matrix:
         '--est_method salmon '
         '--gene_trans_map ' + posix_path('{input.gtm}') + ' '
         '--name_sample_by_basedir '
+        '--basedir_index -3 '
         + posix_path('{input.qf}') + ' '
         '&> {log}'
 
