@@ -393,7 +393,7 @@ rule plot_exn50:
 rule contig_exn50:
     input:
         transcripts = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta',
-        expr = 'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.TMM.EXPR.matrix'
+        expr = 'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.TPM.not_cross_norm'
     output:
         inputs = ('output/040_trinity-abundance/{sample}/{run}/'
                   'salmon.isoform.TMM.EXPR.matrix.E-inputs'),
@@ -418,8 +418,8 @@ rule abundance_to_matrix:
         qf = 'output/040_trinity-abundance/{sample}/{run}/quant.sf',
         gtm = 'output/030_trinity/trinity.{sample}.{run}/Trinity.fasta.gene_trans_map'
     output:
-        # 'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.counts.matrix',
-        'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.TMM.EXPR.matrix'
+        'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.counts.matrix',
+        'output/040_trinity-abundance/{sample}/{run}/salmon.isoform.TPM.not_cross_norm'
     params:
         outdir = 'output/040_trinity-abundance/{sample}/{run}'
     log:
